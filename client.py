@@ -13,6 +13,13 @@ user_input = input("> ")
 while user_input : 
   try : 
     client_socket.sendall(user_input.encode("utf-8"))
+    client_socket.sendall(b"Hello")
+    client_socket.sendall(b"World")
+    client_socket.sendall(b"Hello")
+    client_socket.sendall(b"World")
+    client_socket.sendall(b"Hello")
+    client_socket.sendall(b"World")
+
   except BrokenPipeError :
     print("Client : Send Fail (broken pipe)")
     break
@@ -24,7 +31,7 @@ while user_input :
     break
 
   if received_msg.decode("utf-8") == "F" : 
-    print("Client : connexion processed well")
+    print("Client : connection processed well")
   user_input = input("> ")
 
 print("Client : disconnecting...")
