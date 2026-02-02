@@ -9,7 +9,7 @@ Doing my own chat app.
 - Multiple clients using `select`
 - Delimiter-based framing message protocol (not sufficient !)
 
-## Next Step
+## Steps
 
 1. Length-prefixed protocol (with header) [TODO]
 
@@ -18,6 +18,18 @@ Doing my own chat app.
 4. Message broadcasting 
 5. Connecting over the internet (NAT/Firewall , IP/Port config)
 6. Security (TLS, crypto for end-end encryption)
+
+## Next Step : 
+
+- Need to update ReadMe with the new changes
+- but basically : 
+1. new protocol (minimal but necessary for now) with no apparent issues
+2. more robust server error handling
+3. more structure and refactoring for cleaner code
+
+- The current protocol is minimal but from this we can go towards a more compelete one that supports images, files, even audio, ect..
+
+- Still in step 1 for now.. (important step)
 
 ## Notes
 
@@ -111,8 +123,6 @@ After reflection, it's not really reasonable for chat app because user could sim
 A simple fix is just to search for all \n in the client input and escape them : "\\n". But this is time-expensive. 
 
 So we will need in Next Step to implement the now necessary "Length-prefixed protocol".
-
-
 
 ### blocking methods : 
 

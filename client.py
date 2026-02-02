@@ -4,6 +4,8 @@ print("Client : Starting up...")
 HOST = "127.0.0.1"
 PORT = 5789
 SIZE = 1024
+PREFIX_LENGTH = 4 #4 bytes
+
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -15,12 +17,14 @@ except ConnectionRefusedError :
   client_socket.close()
   exit(1)
 
-user_input = input("> ")
+user_message = input("> ")
 
-while user_input : 
+while user_message : 
   try : 
-    complete_msg = user_input + "\n"
-    client_socket.sendall(complete_msg.encode("utf-8"))
+    payload_bytes = user_message.encode("utf-8")
+    length_bytes = len(payload_bytes).to_bytes(PREFIX_LENGTH, "big")
+
+    client_socket.sendall(length_bytes + payload_bytes) 
 
   except BrokenPipeError :
     print("Client : Send Fail (broken pipe)")
@@ -36,7 +40,7 @@ while user_input :
   if ack == "F" : 
     print("Client : connection processed well")
     
-  user_input = input("> ")
+  user_message = input("> ")
 
 print("Client : disconnecting...")
 client_socket.close()
