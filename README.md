@@ -8,28 +8,25 @@ Doing my own chat app.
 - Handling crashing gracefully
 - Multiple clients using `select`
 - Delimiter-based framing message protocol (not sufficient !)
+- Length-prefixed protocol (without header)
+- 
 
 ## Steps
 
-1. Length-prefixed protocol (with header) [TODO]
+1. Length-prefixed protocol (with header) [DONE]
 
 2. Note that currently client is blocking with input(), meaning it cannot receive messages while typing
 3. Adding semantics (username, ect...)
+
 4. Message broadcasting 
+
 5. Connecting over the internet (NAT/Firewall , IP/Port config)
 6. Security (TLS, crypto for end-end encryption)
 
 ## Next Step : 
 
-- Need to update ReadMe with the new changes
-- but basically : 
-1. new protocol (minimal but necessary for now) with no apparent issues
-2. more robust server error handling
-3. more structure and refactoring for cleaner code
-
-- The current protocol is minimal but from this we can go towards a more compelete one that supports images, files, even audio, ect..
-
-- Still in step 1 for now.. (important step)
+- I don't need to advance further into the protocol for now
+- So we will focus on the next step which is message brodcasting as well as all its challenges 
 
 ## Notes
 
@@ -124,8 +121,35 @@ A simple fix is just to search for all \n in the client input and escape them : 
 
 So we will need in Next Step to implement the now necessary "Length-prefixed protocol".
 
+### A length based protocol :
+
+- MESSAGE := (4 bytes containing the length of the payload) + (bytes of the payload)
+
+- Client just sends MESSAGE
+- Server tries to read 4 bytes to know length, then tries to read the length to get the payload, if successfull he can then decode it.
+
+- The current protocol is minimal but from this we can go towards a more compelete one that supports images, files, even audio, ect.. (with header)
+
+### Message Class : 
+
+CONSTANTS : 
+- PREFIX_LENGTH = 4 : indicate the number of bytes to read at the beggining of a new message to know the length of the payload
+
+VARIABLES :
+- self.buffer : contains all the currently but not treated bytes through recv()
+- self.remaining_bytes : remaining bytes to read to have the whole payload
+- self.awaiting_length : Bool indicating if we need to read the 4 first bytes to get the length => this happens if we have just finished treating the previous message
+
+METHODS : 
+- feed(self, data) : add data to buffer -> extracts & decode as many message as possible 
+
+### Message broadcasting : 
+
+
+
 ### blocking methods : 
 
 `.accept()`
 `.recv()`
 `.select()`
+`input()`
