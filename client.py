@@ -1,4 +1,7 @@
 import socket
+import select
+import sys
+
 print("Client : Starting up...")
 
 HOST = "127.0.0.1"
@@ -44,6 +47,9 @@ class Message :
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_message = Message()
 
+watch_list = [client_socket, sys.stdin.fileno()]
+
+
 try : 
   client_socket.connect((HOST, PORT)) #connect to remote socket at address
 except ConnectionRefusedError : 
@@ -52,37 +58,50 @@ except ConnectionRefusedError :
   client_socket.close()
   exit(1)
 
-user_message = input("> ")
+connected = True
 
-while user_message : 
-  try : 
-    payload_bytes = user_message.encode("utf-8")
-    length_bytes = len(payload_bytes).to_bytes(client_message.PREFIX_LENGTH, "big")
+try :
+  while connected : 
+    readable, _, _ = select.select(watch_list, [], []) #blocking until input() or recv() ready
+    
+    for fd in readable : 
+      if fd == sys.stdin.fileno() : 
+        
+        user_message = sys.stdin.readline().rstrip()
+        
+        if not user_message : 
+          connected = False
+          break
 
-    client_socket.sendall(length_bytes + payload_bytes) 
+        try : 
+          payload_bytes = user_message.encode("utf-8", errors="replace") #invalid Unicode char replaced by "?"
+          length_bytes = len(payload_bytes).to_bytes(client_message.PREFIX_LENGTH, "big")
 
-  except BrokenPipeError :
-    print("Client : Send Fail (broken pipe)")
-    break
+          client_socket.sendall(length_bytes + payload_bytes) 
 
-  data = client_socket.recv(SIZE)  #reading at most 1024 bits and is blocking if no data is to be read
+        except BrokenPipeError :
+          print("Client : Send Fail (broken pipe)")
+          connected = False
+          break
+        
+      elif fd == client_socket : 
+        data = client_socket.recv(SIZE)
 
-  if not data :
-    print("Client : Detected Server Closed")
-    break
-  
-  broadcasted_payloads = client_message.feed(data)
-  
-  for payload in broadcasted_payloads : 
-    message = payload.decode("utf-8")
-    print("Other : " , message)
+        if not data :
+          print("Client : Detected Server Closed")
+          connected = False
+          break
+      
+        broadcasted_payloads = client_message.feed(data)
+      
+        for payload in broadcasted_payloads : 
+          message = payload.decode("utf-8")
+          print("Other : " , message)
 
-  
-  
+          
+except KeyboardInterrupt :
+  print("Client : forced shutdown (CTRL+C)...")
+finally : 
+  print("Client : disconnecting...")
+  client_socket.close()
 
-
-
-  user_message = input("> ")
-
-print("Client : disconnecting...")
-client_socket.close()

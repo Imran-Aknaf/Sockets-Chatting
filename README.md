@@ -8,25 +8,29 @@ Doing my own chat app.
 - Handling crashing gracefully
 - Multiple clients using `select`
 - Delimiter-based framing message protocol (not sufficient !)
-- Length-prefixed protocol (without header)
-- 
+- Length-prefixed protocol
+- Message broadcasting
+- Client is not blocking , can read while typing.
 
 ## Steps
 
 1. Length-prefixed protocol (with header) [DONE]
-
-2. Note that currently client is blocking with input(), meaning it cannot receive messages while typing
-3. Adding semantics (username, ect...)
-
-4. Message broadcasting 
-
+2. Note that currently client is blocking with input(), meaning it cannot receive messages while typing [DONE]
+3. Adding semantics (username, ect...) [NEXT]
+4. Message broadcasting [DONE]
 5. Connecting over the internet (NAT/Firewall , IP/Port config)
 6. Security (TLS, crypto for end-end encryption)
 
 ## Next Step : 
 
-- I don't need to advance further into the protocol for now
-- So we will focus on the next step which is message brodcasting as well as all its challenges 
+We now want "structured message". The goal is to go from raw bytes messages to structured message wich have a meaning for both the server and the client. 
+
+- Add Username or Client/Socket ID (to know from who comes this message)
+- Can also pair this with Server Control (explore what can be done with logging, but a first thing is filtering bad words or commands)
+
+Suggestion of commands : 
+- /rename => rename yourself
+- /list => list all connected "Others" in this conversation
 
 ## Notes
 
@@ -145,25 +149,62 @@ METHODS :
 
 ### Message broadcasting : 
 
-Some notes for now [To formalize] : 
-
-Issues i guess can arise :
+Issues i guess can arise : 
 
 1) if a lot of "other", then the last will receive message way too late compared to other and i guess with a lot message this is even worse.[Fairness issue]
 2) what happens if other n°3 has disconnected/crash, then sendall fails , error. Need to handle that and let us continue broadcastinf of others [By catching it]
-3) Now i don't know how this is possible but image a client that is still here but for which sendall is very slow, then everyone after is slowed down
+3) Now i don't know how this is possible but imagine a client that is still here but for which sendall is very slow, then everyone after is slowed down
 4) what happens if the server itself crash while in broadcast -> is it acceptable that some clients will have receive while other not ? [Partial broadcasting is acceptable for now]
 
 In client pov : 
   
-1) if he is blocked at input(), then how will he receive the message broadcasted to him -> need to resolve this later with select i guess
+1) if he is blocked at input(), then how will he receive the message broadcasted to him -> need to resolve this later with select i guess [DONE]
 2) currently, only if he has just entered an input, he will do sendall and then only will i be able to get him to recv() the broadcasted messages. Then he should decode them and display them.
 
 But issue, client does recv(SIZE) (just like server), but brodcasted message(s) could be bigger than SIZE and thus split through multiple recv()
 Client currently does not have any system to handle that/
 
-Maybe he should use also the Message class and i should from server do sendall(length+msg) again to other clients and let them handle this with Message() just like server.
+Maybe he should use also the Message class and i should from server do sendall(length+msg) again to other clients and let them handle this with Message() just like server. [DONE]
 
+
+Current problem identified : 
+- Client 1 sends data , then he becomes block because of recv()
+- Server receive Client 1 data and send it to Client 2 (broadcast)
+- Client 2 can't see message coming because blocked because of input()
+
+- Thus Client 1 cannot do anything, he is totally dependent on Client 2 action
+- Iff Client 2 enter an input, then he goes to recv() and receive Client 1 data and in the other way, his input is broadcasted to Client 1 which allows Client 1 to recv() and and display Client 1 message
+
+Proposed solution : 
+1) we need select() now in client-side, only way to have recv() only when needed (only when OS wake us up)
+- this allows client to send as many message as it wants and directly when a recv() is available, handle it and print the message
+
+2) but still, if he's not inputing something, he's blocked in the input(). So we need a select() for stdin then too.
+
+
+- stdin becomes just another FD
+- select([socket, stdin])
+
+Now our client process will respond to : 
+1. Network events (incoming message -> recv() )
+2. User events (keyboard input -> input() )
+
+Apparently ONE big downside is that stdin works well with select on UNIX but not on windows because the console input is special there.
+We will deal with portability later, not a priority. 
+
+### About using feed() 2 times : 
+
+Currently what happens is : 
+1. Client encodes and sends a message
+2. Server receives raw bytes via recv() -> it calls feed() to cut them into as many message as possible (still bytes, no decoding done)
+3. If there is messages, he sends these message bytes chunks to other client with length-prefix protocol (broadcasting)
+4. Other client receive raw bytes and need to handle potentially many message or partial ones , so again use feed(), then decode to get real messages. 
+
+Now here there is it seems a redudancy because server could just forward all the bytes he gets from recv() directly to other clients and they only use feed() themselves. So currently using feed() in server seems useless. 
+
+But it has it's utilities for futur uses => If server needs to control messages (logging, moderation, commands, etc.) 
+
+Therefore, currently, this part is commented out in server to continue using only the minimal necessary. 
 
 ### blocking methods : 
 

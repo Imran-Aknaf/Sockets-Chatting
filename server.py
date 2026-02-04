@@ -60,14 +60,15 @@ def handleClientMessage(client_socket) :
   if not data : 
     return False
   
-  client_msg = clients_buffer[client_socket]
-  payloads = client_msg.feed(data)
-  
+  #client_msg = clients_buffer[client_socket]
+  #payloads = client_msg.feed(data)
+
   for other in watch_list : 
-    if other is not client_socket and other is not server_socket : 
-        for payload in payloads :
+    if (other != client_socket) and (other != server_socket) : 
+        '''for payload in payloads :
           length= len(payload).to_bytes(client_msg.PREFIX_LENGTH, "big")
-          other.sendall(length + payload) 
+          other.sendall(length + payload) '''
+        other.sendall(data)
 
   return True
 
@@ -86,7 +87,7 @@ try :
     readable, _, _ = select.select(watch_list, [], []) #blocking until there is ready sockets
 
     for sock in readable : 
-      if sock is server_socket : 
+      if sock == server_socket : 
         new_client_socket = handleClientConnexion(sock)
         watch_list.append(new_client_socket)
         clients_buffer[new_client_socket] = Message()
@@ -106,13 +107,13 @@ try :
 
 
 except KeyboardInterrupt :
-  print("Server : shutdown (CTRL+C)...")
+  print("Server : forced shutdown (CTRL+C)...")
 
 finally :
   print("Server : Clean up...")
   print("Server : Closing all remaining sockets")
 
   for sock in watch_list : 
-    if sock is not server_socket : 
+    if sock != server_socket : 
       sock.close() #closing clients fist
   server_socket.close()#closing server
