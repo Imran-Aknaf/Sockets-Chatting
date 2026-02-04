@@ -206,6 +206,35 @@ But it has it's utilities for futur uses => If server needs to control messages 
 
 Therefore, currently, this part is commented out in server to continue using only the minimal necessary. 
 
+### Remarks on endianness
+
+In our fix-length-prefixed protocol we do 2 things : 
+
+1) We convert the length into bytes with `.to_bytes(PREFIX_LENGTH, "big")` : 
+
+- Because the network/socket can only sends bytes. So we need to encode the integer into bytes 
+- And because we need a fix-length in our protocol, we choosed to serialize the integer into exactly 4 bytes (=PREFIX_LENGTH)
+- "big" is the byte order/endianness. We choosed "big" arbitrarly.
+- If client and server don't agree on the order/endianness, the decoded length will be completely wrong. So we force them to use both "big"
+
+2) We convert the input text into bytes with `user_message.encode("utf-8")`
+
+- Well as said before, we need to send bytes when using network/sockets. So encoding is necessary.
+- UTF-8 is a already defined specific byte format. So it has a specific and defined order/endianness. 
+- Therefore, there is no ambiguity about byte order in UTF-8. No need to use "big"/"little" here.
+
+Important : 
+- if we only transformed the length integer into bytes with no endianness specification, then it's decoding will be OS endianness-dependent
+- we could maybe ask why not encode the integer into utf-8 then ? there would be no ambiguity.
+- This is True but the issue is we loose the fix length of 4 bytes. Indeed imagine we do this `length_utf8 = str(12).encode("utf-8") ``
+- Then for `length_int=12`, our utf-8 encoding is 2 bytes long
+- But if `length_int=200`, our utf-8 encoding is 3 bytes long
+
+We need the length to be fix-encoded to then allow easy parsing of the bytes
+In our approach we always use 4 bytes and this works for any message_length up to 2^32-1 (as 4 bytes = 4*8 = 32 bits)
+
+
+
 ### blocking methods : 
 
 `.accept()`
