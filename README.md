@@ -265,7 +265,7 @@ When the server decodes a payload and check it, if it's important for him he wil
 1) Execute server logic
 2) Send a new message to the involved clients of `"type" : "system"`.  
 
-# Server Ownership/Authority
+### Server Ownership/Authority
 
 - need to talk about notion of ownership (with an example) and what happens if it's not server owned. [TODO]
 
