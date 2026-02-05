@@ -1,6 +1,7 @@
 import socket
 import select
 import sys
+import json
 
 print("Client : Starting up...")
 
@@ -53,7 +54,7 @@ watch_list = [client_socket, sys.stdin.fileno()]
 try : 
   client_socket.connect((HOST, PORT)) #connect to remote socket at address
 except ConnectionRefusedError : 
-  print("Client : No server to connect to")
+  print("Client : Server not available")
   print("Client : disconnecting...")
   client_socket.close()
   exit(1)
@@ -72,11 +73,32 @@ try :
         if not user_message : 
           connected = False
           break
+        
+        if user_message[0] == "/" : 
+          cmd = user_message.split(" ", 1)
 
+
+          payload = {
+            "type" : "command",
+            "cmd" : cmd[0], #part with /
+            "value" : cmd[1] #the rest
+          }
+
+        else : 
+          payload = {
+              "type" : "chat",
+              "username" : client_socket.getsockname(),
+              "text" : user_message
+          }
+
+        #serialise the srtuct into a json string
+        json_expr = json.dumps(payload)
+
+        #payload_bytes = user_message.encode("utf-8", errors="replace") #invalid Unicode char replaced by "?"
+        payload_bytes = json_expr.encode("utf-8")
+        length_bytes = len(payload_bytes).to_bytes(client_message.PREFIX_LENGTH, "big")
+        
         try : 
-          payload_bytes = user_message.encode("utf-8", errors="replace") #invalid Unicode char replaced by "?"
-          length_bytes = len(payload_bytes).to_bytes(client_message.PREFIX_LENGTH, "big")
-
           client_socket.sendall(length_bytes + payload_bytes) 
 
         except BrokenPipeError :
@@ -95,10 +117,13 @@ try :
         broadcasted_payloads = client_message.feed(data)
       
         for payload in broadcasted_payloads : 
-          message = payload.decode("utf-8")
-          print("Other : " , message)
+          #message = payload.decode("utf-8")
+          json_expr = payload.decode("utf-8")
+          payload = json.loads(json_expr)
 
-          
+          print(f"{payload['username']} : {payload['text']}")
+
+
 except KeyboardInterrupt :
   print("Client : forced shutdown (CTRL+C)...")
 finally : 

@@ -23,14 +23,9 @@ Doing my own chat app.
 
 ## Next Step : 
 
-We now want "structured message". The goal is to go from raw bytes messages to structured message wich have a meaning for both the server and the client. 
+- Server control and ownershio to implement 
+- So that the /rename (and /list) command works
 
-- Add Username or Client/Socket ID (to know from who comes this message)
-- Can also pair this with Server Control (explore what can be done with logging, but a first thing is filtering bad words or commands)
-
-Suggestion of commands : 
-- /rename => rename yourself
-- /list => list all connected "Others" in this conversation
 
 ## Notes
 
@@ -232,6 +227,47 @@ Important :
 
 We need the length to be fix-encoded to then allow easy parsing of the bytes
 In our approach we always use 4 bytes and this works for any message_length up to 2^32-1 (as 4 bytes = 4*8 = 32 bits)
+
+### Structured message 
+
+We now want "structured message". The goal is to go from raw bytes messages to structured message wich have a meaning for both the server and the client. 
+
+- Add Username or Client/Socket ID (to know from who comes this message)
+- Can also pair this with Server Control (explore what can be done with logging, but a first thing is filtering bad words or commands)
+
+Suggestion of commands : 
+- /rename => rename yourself
+- /list => list all connected "Others" in this conversation
+
+### Json header communication
+
+We build our structure message as a dictionnary which contains key-value pairs that gives important information : 
+- `{ "type": "command", "cmd": "rename", "value": "imran" }`
+
+But as we know , sockets only know raw bytes so we have this encoding flow : 
+1) Build structure obj (dictionnary).
+2) `json.dumps(x)` will transform the dictionnary into a json string. This becomes our payload.
+3) We encode our payload into raw bytes using `.encode("utf-8")` and then `.sendall()`.
+
+and this decoding flow : 
+1) `recv()` gets raw bytes that are splitted into payload bytes with `feed()`.
+2) Then for each encoded payload, we decode them using `.decode("utf-8")`. This gives us back the json string.
+3) Now to get the final dictionnary we use `json.loads(x)`.
+
+### Server control
+
+Before server just did this : bytes in → bytes out.
+
+But now he has to actually pay the cost of decoding everything that comes, because he need to check for commands and other things. [He needs to understand what arrive, to then react correctly]
+
+When the server decodes a payload and check it, if it's important for him he will : 
+
+1) Execute server logic
+2) Send a new message to the involved clients of `"type" : "system"`.  
+
+# Server Ownership/Authority
+
+- need to talk about notion of ownership (with an example) and what happens if it's not server owned. [TODO]
 
 
 
